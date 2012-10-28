@@ -1,0 +1,69 @@
+Key storage data format (styled after scryptenc)
+-----------------------
+
+offset  length  description
+0       6       * "sdmcks" (scrypt dm_crypt key secret)
+6       1       * File version. (== 0)
+7       1       * Scrypt metadata length - 1 in bytes. (uint8_t) (== 127)
+8       2       * Key material size in bytes. (BE uint16_t)
+10      1       * Number of Shamir's shares required for recombination. (uint8_t)
+                  (for future expansion) (== 2)
+11      1       * Total number of Shamir's shares. (uint8_t)
+                  (for future expansion) (== 2)
+12      1       * Number of passphrase protected shares. (uint8_t)
+                  (for future expansion) (== 1)
+13      1       * Number of "oracle" protected shares. (uint8_t)
+                  (for future expansion) (== 1)
+14      1       * Length of oracle challenges in bytes. (uint8_t)
+15      4       * Length of config data in bytes. (BE uint32_t)
+if (off12 == 1) {
+19      X       * Passphrase encrypted share that includes challenges for all oracles.
+                    X = scrypt metadata + key size + (off12 * off13)
+} else {
+19      U       * Sequential list of oracle challenges
+                    V = off13 * off12
+V       W       * Passphrase encrypted share that includes challenges for all oracles.
+                    V = 19 + U
+                    W = scrypt metadata + key size
+                    X = U + W
+}
+...
+Y       Z       * "Oracle" encrypted share.
+                    Y = 19 + (X * off12)
+                    Z = scrypt metadata + key size
+...
+A       B       * /etc/crypttab formatted (or other) data stream without key
+                  size/file options. (added at runtime) Encrypted with scrypt
+                  enc using key material as input.
+                    A =  Y + (Z * off13 * off14)
+                    B = scrypt metadata + length of config data
+...
+C       32      * SHA256 checksum
+                    C = A + B
+
+Limitations:
+  * All "oracle" challenge response devices must take same size input as
+    challenge per data set.
+  * One "user" per stored data set. (This data should easily fit in, eg, a bdb
+    table.) In this case a "user" is one set of shares. The same secret could
+    still be split up multiple different times and stored separately.
+  * In the case of multiple passphrase-based shares the oracle shares can not
+    be stored encrypted alongside the passphrase shares as this would require
+    having access to all passphrases on every oracle share re-encryption.
+
+Advantages:
+  * Extensible to allow N-factor auth using multiple passphrases or "oracle"
+    devices that are not necessarily controlled by the same party. (OTP support
+    could possibly be added but several OTPs would need to be pre-computed and
+    shares encrypted with multiples to avoid loss of data in the case of a user
+    accidentally advancing the sequence too far.)
+  * In the common case of a single passphrase share the oracle challenges are
+    stored encrypted as well preventing as much information leakage as
+    possible.
+  * Since location of "oracle" encrypted shares is easily computed, and length
+    will not change, in place rewriting of the stored share that is encrypted
+    via this method is trivial.
+  * Easily base64 encoded for safe storage via non-file mechanisms. (This
+    negates the previous advantage, however.)
+  * The config data section could be used for any type of data, not just block
+    device encryption settings.

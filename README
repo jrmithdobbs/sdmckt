@@ -1,0 +1,24 @@
+Please see COPYING for licensing and copyright information.
+Please see INSTALL for installation instrunctions.
+Please gaze at the stars for usage documentation.
+
+This code is not very pretty. There are several areas of duplicated code that
+need refactoring.
+
+This is Proof of Concept quality at best. Do not trust any important keys to
+this code.
+
+You have been warned.
+
+The scrypt code is the reference implementation and for that reason has some
+major drawbacks. Specifically, the timing information is re-derived on every
+encrypt/decrypt call and not cached. This can lead to unexpetedly weak
+derivations compared to the host's actual computational power. It can also lead
+to decryption operations failing when they should exceed due to the time limit.
+The code currently calling scrypt sets excessively long decrypt time limits to
+try and avoid this but they may not be adequate in extremely overloaded
+environments.
+
+Additionally the calls to scrypt_enc/dec are not pretty or pushed through a
+consistant code path and currently have magic numbers re-used all throughout
+the code. Sorry.

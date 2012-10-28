@@ -1,0 +1,33 @@
+Prereqs:
+
+You must have openssl, ykpers, and yubikey-c (aka libyubikey) installed.
+
+yubikey-c https://github.com/Yubico/yubico-c
+ykpers >=1.6 https://github.com/Yubico/yubikey-personalization
+
+If not specified an attempt to use pkg-config to find the yubikey libraries is
+made.
+
+Basic install steps on most systems:
+
+./autogen.sh
+cd build && ../configure && make && sudo make install
+
+../configure --help for some specific options regarding openssl/yubikey library
+locations.
+
+Please note that the versions set for autoconf and automake in autogen.sh are
+not strict requirements.  The definitions should work just fine with 2.69 and
+1.12 (tested) and most likely newer versions.  The defined versions are just
+common versions that are easily installed on OpenBSD. They can be easily
+overidden like so (assuming bourne derived shell):
+
+AUTOCONF_VERSION=2.69 AUTOMAKE_VERSION=1.12 ./autogen.sh
+
+The code currently assumes that there is only one yubikey inserted (ykpers
+limitation) and that the second slot of said key is already configured as a
+challenge response slot.
+
+With this in mind you can test the code on your system with the yubikey
+inserted and configured as described  by running the test-sdmckt binary which
+is built with the all target.
