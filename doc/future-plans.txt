@@ -1,0 +1,74 @@
++ is concat in all uses below.
+
+Key Selection:
+
+  MK = 256bit key generated from mixture of true random sources (entropy key +
+    hifn) through arc4random on openbsd
+  MN = 192bit nonce generated the same way
+
+Key Protection:
+
+  x = number of auth factors
+  s() = shamirs secret sharing (using same random sources)
+  S[0...x-1] = The resultant shares split via s(X,X,MK+MN)
+  E() = crypto_secretbox_xsalsa20poly1305 as defined here:
+    http://nacl.cr.yp.to/secretbox.html
+  A[0...x-1] = Keys derived from authentication factors for share encryption.
+    Passwords/phrases.
+      We derive a key from this construction:
+        P = The passphrase.
+        N = 256bit nonce
+        A[i] = PBKDF2(hmac-blake-256,P,N,400000,256bit)
+    hash-based c/r auth tokens like the yubikey and others (must be some form of
+    oracle-ish device, no seed storage should be necessary for use, that's a hard
+    requirement)
+      We derive a key from this construction:
+        C = Randomly generated challenge of size defined by the device
+        R = The response from the device of size defined by the device (queried, not
+        derived, we do not want to know the device's key at all), eg:
+          R = oracle(C)
+        N = 256bit nonce
+        A[i] = PBKDF2(hmac-blake-256,R,N,400000,256bit)
+  each of S[0...x-1] is encrypted to form the set EncS[0...x-1] via:
+    for i in 0...x-1: N = random 256bit number; E(EncS[i],S[i],length(S[i]),N,A[i]);
+
+Storage:
+  All Nonces must be stored, probably with the related ciphertext, except for MN.
+
+Key Usage:
+
+  Data can then be stored using the original random key and nonce (sizes
+  described are for use with XSalsa20+poly1305, they can be adjusted) in a way
+  that requires all auth factors in order to recover.
+
+Claim:
+
+  This leaves us with a key that is at least as hard to derive as any of:
+  * Colliding 400000 rounds of hmac-blake-256 x number of times
+  * A bruteforce keyspace search of 2^256 (2^128 for 50% chance) Assuming
+    that even hidden nonces are derivable in the final cipher used. (Not always
+    true.)
+
+Variations:
+
+  1) A requirement to pair an oracle auth factor with a passphrase factor could
+    be used to modify the above so that the challenge does not need to be
+    stored in the clear. This creates a dependency on one factor before another
+    can be evaluated. I worry about timing side channels with this in
+    implementation if this were ever used in an interactive protocol However,
+    this may hinder proof of authorship efforts upon discovery of the auth fob.
+
+  2) hmac-blake-256 could be replaced with skein-256's auth variation.  SHA-3
+    in 256 or 512bit forms should probably be used once the selection is made.
+    I do not feel that either previous sha hashes are suitable for this
+    construction even with the hmac construction due to existing specialized
+    asic and other highly parallelized hardware available. skein and blake are
+    mentioned specifically due to their memory usage characteristics and
+    underlying primitive construction.
+
+  3) PBKDF2() could be replaced by scrypt(). I have seen wildly varying
+    workfactor impact with scrypt between different platforms. The timing
+    correction seems to work correctly on *BSD but seems to cause much less
+    work on current linux systems. I think the construction would work, I'm
+    just not sure about the reference implementation.
+

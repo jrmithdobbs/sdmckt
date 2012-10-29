@@ -1,6 +1,26 @@
-Please see COPYING for licensing and copyright information.
-Please see INSTALL for installation instrunctions.
+See COPYING for licensing and copyright information.
+
+See INSTALL for installation instrunctions.
+
+See doc/FORMAT for specification of storage format.
+
+See doc/future-plans.txt for intended changes to primitives and more thorough
+description of the basic concepts used.
+
 Please gaze at the stars for usage documentation.
+
+Basic overview:
+
+The idea behind this software is to securely store a randomly generated key in
+such a way that it is extremely difficult to recover the random key without
+knowledge of all authentication tokens.
+
+Currently an authentication token is one of a) a passphrase or b) a yubikey
+with slot two in challenge/response mode. The secret configured on the yubikey
+does not need to be known by the software and is not stored. It is queried on
+encryption of each "oracle" share stored in the format.
+
+Notes on current implementation status:
 
 This code is not very pretty. There are several areas of duplicated code that
 need refactoring.
@@ -14,11 +34,12 @@ The scrypt code is the reference implementation and for that reason has some
 major drawbacks. Specifically, the timing information is re-derived on every
 encrypt/decrypt call and not cached. This can lead to unexpetedly weak
 derivations compared to the host's actual computational power. It can also lead
-to decryption operations failing when they should exceed due to the time limit.
-The code currently calling scrypt sets excessively long decrypt time limits to
-try and avoid this but they may not be adequate in extremely overloaded
-environments.
+to decryption operations failing when they should succeed due to the time
+limit.  The code currently calling scrypt sets excessively long decrypt time
+limits to try and avoid this but they may not be adequate in extremely
+overloaded environments.
 
-Additionally the calls to scrypt_enc/dec are not pretty or pushed through a
+Additionally the calls to scryptenc/dec are not pretty or pushed through a
 consistant code path and currently have magic numbers re-used all throughout
 the code. Sorry.
+
